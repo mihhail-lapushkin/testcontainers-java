@@ -4,12 +4,13 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.output.ToStringConsumer;
-import org.testcontainers.containers.output.WaitingConsumer;
 import org.testcontainers.containers.startupcheck.OneShotStartupCheckStrategy;
 import org.testcontainers.images.builder.ImageFromDockerfile;
 
 import java.io.File;
 import java.util.concurrent.TimeoutException;
+
+import static org.rnorth.visibleassertions.VisibleAssertions.assertTrue;
 
 public class DirectoryTarResourceTest {
 
@@ -18,18 +19,21 @@ public class DirectoryTarResourceTest {
             new ImageFromDockerfile()
                     .withDockerfileFromBuilder(builder ->
                             builder.from("alpine:3.3")
-                                    .copy("/foo", "/tmp/foo")
-                                    .cmd("ls -alr /tmp/foo")
+                                    .copy("/tmp/foo", "/foo")
+                                    .cmd("cat /foo/src/test/resources/test-recursive-file.txt")
                                     .build()
-                    ).withFileFromFile("/foo", new File(".")))
+                    ).withFileFromFile("/tmp/foo", new File(".")))
             .withStartupCheckStrategy(new OneShotStartupCheckStrategy());
 
 
     @Test
     public void simpleTest() throws TimeoutException {
-        final WaitingConsumer wait = new WaitingConsumer();
-        wait.waitUntilEnd();
+
         final ToStringConsumer toString = new ToStringConsumer();
-        container.followOutput(wait.andThen(toString));
+        container.followOutput(toString);
+
+        final String results = toString.toUtf8String();
+
+        assertTrue("The container has a file that was copied in via a recursive copy", results.contains("Used for DirectoryTarResourceTest"));
     }
 }
