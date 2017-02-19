@@ -1,6 +1,10 @@
 package org.testcontainers.images.builder;
 
-import java.io.OutputStream;
+import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
+import org.apache.commons.compress.archivers.tar.TarArchiveOutputStream;
+import org.apache.commons.io.IOUtils;
+
+import java.io.IOException;
 
 public interface Transferable {
 
@@ -26,7 +30,24 @@ public interface Transferable {
     /**
      * transfer content of this Transferable to the output stream. <b>Must not</b> close the stream.
      *
-     * @param outputStream stream to output
+     * @param tarArchiveOutputStream stream to output
+     * @param name
      */
-    void transferTo(OutputStream outputStream);
+    default void transferTo(TarArchiveOutputStream tarArchiveOutputStream, final String name) {
+        TarArchiveEntry tarEntry = new TarArchiveEntry(name);
+        tarEntry.setSize(getSize());
+        tarEntry.setMode(getFileMode());
+
+        try {
+            tarArchiveOutputStream.putArchiveEntry(tarEntry);
+            IOUtils.write(getBytes(), tarArchiveOutputStream);
+            tarArchiveOutputStream.closeArchiveEntry();
+        } catch (IOException e) {
+            throw new RuntimeException("Can't transfer " + getDescription(), e);
+        }
+    }
+
+    byte[] getBytes();
+
+    String getDescription();
 }

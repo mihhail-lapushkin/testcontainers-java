@@ -1,11 +1,11 @@
 package org.testcontainers.images.builder.traits;
 
+import org.apache.commons.compress.archivers.tar.TarArchiveOutputStream;
 import org.testcontainers.images.builder.Transferable;
+import org.testcontainers.utility.MountableFile;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.OutputStream;
-import java.nio.file.Files;
 import java.nio.file.Path;
 
 /**
@@ -24,7 +24,7 @@ public interface FilesTrait<SELF extends FilesTrait<SELF> & BuildContextBuilderT
             @Override
             public long getSize() {
                 try {
-                    return Files.size(filePath);
+                    return MountableFile.forHostPath(filePath.toAbsolutePath().toString()).size();
                 } catch (IOException e) {
                     throw new RuntimeException("Can't get size from " + filePath, e);
                 }
@@ -32,16 +32,30 @@ public interface FilesTrait<SELF extends FilesTrait<SELF> & BuildContextBuilderT
 
             @Override
             public int getFileMode() {
-                return DEFAULT_FILE_MODE | (Files.isExecutable(filePath) ? 0755 : 0);
+                try {
+                    return MountableFile.forHostPath(filePath.toAbsolutePath().toString()).fileMode();
+                } catch (IOException e) {
+                    throw new RuntimeException("Can't get file mode from " + filePath, e);
+                }
             }
 
             @Override
-            public void transferTo(OutputStream outputStream) {
+            public void transferTo(TarArchiveOutputStream tarArchiveOutputStream, final String name) {
                 try {
-                    Files.copy(filePath, outputStream);
+                    MountableFile.forHostPath(filePath.toAbsolutePath().toString()).archiveTo(tarArchiveOutputStream, name);
                 } catch (IOException e) {
                     throw new RuntimeException("Can't transfer file " + filePath, e);
                 }
+            }
+
+            @Override
+            public byte[] getBytes() {
+                return new byte[0];
+            }
+
+            @Override
+            public String getDescription() {
+                return null;
             }
 
         });

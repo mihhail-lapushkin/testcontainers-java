@@ -4,6 +4,8 @@ import com.google.common.base.Charsets;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
+import org.apache.commons.compress.archivers.tar.TarArchiveOutputStream;
 import org.apache.commons.lang.SystemUtils;
 import org.jetbrains.annotations.NotNull;
 
@@ -17,6 +19,7 @@ import java.net.URL;
 import java.net.URLDecoder;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Enumeration;
 import java.util.HashSet;
 import java.util.Set;
@@ -164,9 +167,9 @@ public class MountableFile {
 
     @SuppressWarnings("ResultOfMethodCallIgnored")
     private void copyFromJarToLocation(final JarFile jarFile,
-                                              final JarEntry entry,
-                                              final String fromRoot,
-                                              final File toRoot) throws IOException {
+                                       final JarEntry entry,
+                                       final String fromRoot,
+                                       final File toRoot) throws IOException {
 
         String destinationName = entry.getName().replaceFirst(fromRoot, "");
         File newFile = new File(toRoot, destinationName);
@@ -192,5 +195,57 @@ public class MountableFile {
 
     private void deleteOnExit(final Path path) {
         Runtime.getRuntime().addShutdownHook(new Thread(() -> recursiveDeleteDir(path)));
+    }
+
+    public void archiveTo(final TarArchiveOutputStream outputStream, String prefix) throws IOException {
+
+//        try (TarArchiveOutputStream tarArchive = new TarArchiveOutputStream(new GZIPOutputStream(outputStream))) {
+            tarDirectory(this.getResolvedPath(), this.getResolvedPath(), outputStream, prefix);
+//            tarArchive.finish();
+//        }
+    }
+
+    private void tarDirectory(String rootDir, String sourceDir, TarArchiveOutputStream tarArchive, String prefix) throws IOException {
+
+
+        final File f = new File(sourceDir).getCanonicalFile();
+        final File rootFile = new File(rootDir).getCanonicalFile();
+        final File relativeFile = rootFile.toPath().relativize(f.toPath()).toFile();
+
+        try {
+            final TarArchiveEntry tarEntry = new TarArchiveEntry(f, prefix + "/" + relativeFile.toString());
+            tarArchive.putArchiveEntry(tarEntry);
+
+            if (f.isFile()) {
+                Files.copy(f.toPath(), tarArchive);
+                tarArchive.closeArchiveEntry();
+            } else {
+                tarArchive.closeArchiveEntry();
+            }
+
+            final File[] children = f.listFiles();
+            if (children != null) {
+                for (final File child : children) {
+                    tarDirectory(rootDir + File.separator, child.getCanonicalPath(), tarArchive, prefix);
+                }
+            }
+        } catch (IOException e) {
+            log.error("Error when copying TAR file entry: {}", f, e);
+            throw e;
+        }
+    }
+
+    public long size() throws IOException {
+
+        final File file = new File(this.getResolvedPath());
+        if (file.isFile()) {
+            return file.length();
+        } else {
+            return 0;
+        }
+    }
+
+    public int fileMode() throws IOException {
+        return (int) Files.getAttribute(Paths.get(this.getResolvedPath()), "unix:mode");
     }
 }
