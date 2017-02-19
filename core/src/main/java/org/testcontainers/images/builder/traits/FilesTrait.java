@@ -19,12 +19,13 @@ public interface FilesTrait<SELF extends FilesTrait<SELF> & BuildContextBuilderT
     }
 
     default SELF withFileFromPath(String path, Path filePath) {
+        final MountableFile mountableFile = MountableFile.forHostPath(filePath.toAbsolutePath().toString());
         return ((SELF) this).withFileFromTransferable(path, new Transferable() {
 
             @Override
             public long getSize() {
                 try {
-                    return MountableFile.forHostPath(filePath.toAbsolutePath().toString()).size();
+                    return mountableFile.size();
                 } catch (IOException e) {
                     throw new RuntimeException("Can't get size from " + filePath, e);
                 }
@@ -33,31 +34,24 @@ public interface FilesTrait<SELF extends FilesTrait<SELF> & BuildContextBuilderT
             @Override
             public int getFileMode() {
                 try {
-                    return MountableFile.forHostPath(filePath.toAbsolutePath().toString()).fileMode();
+                    return mountableFile.fileMode();
                 } catch (IOException e) {
                     throw new RuntimeException("Can't get file mode from " + filePath, e);
                 }
             }
 
             @Override
-            public void transferTo(TarArchiveOutputStream tarArchiveOutputStream, final String name) {
+            public void transferTo(TarArchiveOutputStream tarArchiveOutputStream, final String destination) {
                 try {
-                    MountableFile.forHostPath(filePath.toAbsolutePath().toString()).archiveTo(tarArchiveOutputStream, name);
+                    mountableFile.archiveTo(destination, tarArchiveOutputStream);
                 } catch (IOException e) {
                     throw new RuntimeException("Can't transfer file " + filePath, e);
                 }
             }
-
-            @Override
-            public byte[] getBytes() {
-                return new byte[0];
-            }
-
             @Override
             public String getDescription() {
-                return null;
+                return "File from: " + filePath;
             }
-
         });
     }
 }

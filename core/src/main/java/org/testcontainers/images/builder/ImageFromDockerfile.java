@@ -131,9 +131,8 @@ public class ImageFromDockerfile extends LazyFuture<String> implements
 
                 for (Map.Entry<String, Transferable> entry : transferables.entrySet()) {
                     Transferable transferable = entry.getValue();
-                    final String name = entry.getKey();
-                    transferable.transferTo(tarArchive, name);
-
+                    final String destination = entry.getKey();
+                    transferable.transferTo(tarArchive, destination);
                 }
                 tarArchive.finish();
             }

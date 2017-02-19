@@ -12,9 +12,9 @@ public interface Transferable {
 
     /**
      * Get file mode. Default is 0100644.
-     * @see Transferable#DEFAULT_FILE_MODE
      *
      * @return file mode
+     * @see Transferable#DEFAULT_FILE_MODE
      */
     default int getFileMode() {
         return DEFAULT_FILE_MODE;
@@ -31,10 +31,10 @@ public interface Transferable {
      * transfer content of this Transferable to the output stream. <b>Must not</b> close the stream.
      *
      * @param tarArchiveOutputStream stream to output
-     * @param name
+     * @param destination
      */
-    default void transferTo(TarArchiveOutputStream tarArchiveOutputStream, final String name) {
-        TarArchiveEntry tarEntry = new TarArchiveEntry(name);
+    default void transferTo(TarArchiveOutputStream tarArchiveOutputStream, final String destination) {
+        TarArchiveEntry tarEntry = new TarArchiveEntry(destination);
         tarEntry.setSize(getSize());
         tarEntry.setMode(getFileMode());
 
@@ -47,7 +47,9 @@ public interface Transferable {
         }
     }
 
-    byte[] getBytes();
+    default byte[] getBytes() {
+        return new byte[0];
+    }
 
     String getDescription();
 }

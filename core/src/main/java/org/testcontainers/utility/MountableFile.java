@@ -197,40 +197,34 @@ public class MountableFile {
         Runtime.getRuntime().addShutdownHook(new Thread(() -> recursiveDeleteDir(path)));
     }
 
-    public void archiveTo(final TarArchiveOutputStream outputStream, String prefix) throws IOException {
-
-//        try (TarArchiveOutputStream tarArchive = new TarArchiveOutputStream(new GZIPOutputStream(outputStream))) {
-            tarDirectory(this.getResolvedPath(), this.getResolvedPath(), outputStream, prefix);
-//            tarArchive.finish();
-//        }
+    public void archiveTo(String destinationPathInTar, final TarArchiveOutputStream outputStream) throws IOException {
+        recursiveTar(destinationPathInTar, this.getResolvedPath(), this.getResolvedPath(), outputStream);
     }
 
-    private void tarDirectory(String rootDir, String sourceDir, TarArchiveOutputStream tarArchive, String prefix) throws IOException {
+    private void recursiveTar(String destination, String sourceRootDir, String sourceCurrentDir, TarArchiveOutputStream tarArchive) throws IOException {
 
 
-        final File f = new File(sourceDir).getCanonicalFile();
-        final File rootFile = new File(rootDir).getCanonicalFile();
-        final File relativeFile = rootFile.toPath().relativize(f.toPath()).toFile();
+        final File sourceFile = new File(sourceCurrentDir).getCanonicalFile();
+        final File sourceRootFile = new File(sourceRootDir).getCanonicalFile();
+        final String relativePathToSourceFile = sourceRootFile.toPath().relativize(sourceFile.toPath()).toFile().toString();
 
         try {
-            final TarArchiveEntry tarEntry = new TarArchiveEntry(f, prefix + "/" + relativeFile.toString());
+            final TarArchiveEntry tarEntry = new TarArchiveEntry(sourceFile, destination + "/" + relativePathToSourceFile);
             tarArchive.putArchiveEntry(tarEntry);
 
-            if (f.isFile()) {
-                Files.copy(f.toPath(), tarArchive);
-                tarArchive.closeArchiveEntry();
-            } else {
-                tarArchive.closeArchiveEntry();
+            if (sourceFile.isFile()) {
+                Files.copy(sourceFile.toPath(), tarArchive);
             }
+            tarArchive.closeArchiveEntry();
 
-            final File[] children = f.listFiles();
+            final File[] children = sourceFile.listFiles();
             if (children != null) {
                 for (final File child : children) {
-                    tarDirectory(rootDir + File.separator, child.getCanonicalPath(), tarArchive, prefix);
+                    recursiveTar(destination, sourceRootDir + File.separator, child.getCanonicalPath(), tarArchive);
                 }
             }
         } catch (IOException e) {
-            log.error("Error when copying TAR file entry: {}", f, e);
+            log.error("Error when copying TAR file entry: {}", sourceFile, e);
             throw e;
         }
     }
